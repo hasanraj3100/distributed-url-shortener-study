@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: urlshortener
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d urlshortener"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    # Generous limits so the app, not the DB, is the first bottleneck.
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/urlshortener
+      BASE_URL: http://localhost:8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Deliberately tiny: tune these so one instance saturates quickly.
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 128M
